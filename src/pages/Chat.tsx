@@ -6,6 +6,7 @@ import { TypingIndicator } from '@/components/TypingIndicator';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { sendMessage } from '@/lib/api';
 
 interface Message {
   id: string;
@@ -39,44 +40,54 @@ const Chat: FC = () => {
       content,
     };
 
+    // Prepare history from current messages
+    // We map the existing 'messages' to the format expected by the API
+    const history = messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
+
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
     setStreamingContent('');
 
-    // Simulate streaming response (replace with actual API call)
-    await simulateStreamingResponse(content);
+    try {
+      // Call the API
+      const responseText = await sendMessage(content, history);
+
+      await animateResponse(responseText);
+    } catch (error) {
+      console.error("Failed to get response:", error);
+      // Optional: Add error message to chat
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: "Sorry, I'm having trouble connecting to the server. Please try again later.",
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const simulateStreamingResponse = async (userMessage: string) => {
-    // Sample responses based on keywords
-    let response = "I'd be happy to help you with that! At Pizza Alchemy, we take pride in our handcrafted pizzas made with fresh, locally-sourced ingredients. Is there anything specific you'd like to know about our menu or services?";
-
-    if (userMessage.toLowerCase().includes('menu') || userMessage.toLowerCase().includes('pizza')) {
-      response = "🍕 Our menu features a variety of artisan pizzas!\n\n**Signature Pizzas:**\n• The Alchemist's Gold - Truffle oil, wild mushrooms, fontina\n• Spicy Sorcerer - Jalapeños, pepperoni, hot honey drizzle\n• Garden Wizard - Fresh veggies, pesto, goat cheese\n• Classic Margherita - San Marzano tomatoes, fresh mozzarella, basil\n\nWould you like to know more about any of these?";
-    } else if (userMessage.toLowerCase().includes('hours') || userMessage.toLowerCase().includes('open')) {
-      response = "⏰ **Our Hours:**\n\n• Monday - Thursday: 11am - 10pm\n• Friday - Saturday: 11am - 12am\n• Sunday: 12pm - 9pm\n\nWe also offer delivery until 30 minutes before closing!";
-    } else if (userMessage.toLowerCase().includes('ingredient') || userMessage.toLowerCase().includes('fresh')) {
-      response = "🌿 **Our Ingredients:**\n\nWe're committed to quality! All our pizzas feature:\n\n• Hand-stretched dough made fresh daily\n• San Marzano tomatoes from Italy\n• Locally-sourced mozzarella\n• Organic vegetables from nearby farms\n• Premium meats with no artificial preservatives\n\nWe also offer gluten-free and vegan options!";
-    } else if (userMessage.toLowerCase().includes('special') || userMessage.toLowerCase().includes('deal')) {
-      response = "✨ **Today's Specials:**\n\n• **Mystic Monday** - Buy one, get one 50% off\n• **Topping Tuesday** - Free extra topping\n• **Wine Wednesday** - Half-price wine with any large pizza\n• **Family Friday** - 2 large pizzas + sides for $45\n\nWant me to tell you about our loyalty rewards program?";
-    }
-
+  const animateResponse = async (text: string) => {
     // Simulate streaming character by character
-    for (let i = 0; i < response.length; i++) {
+    for (let i = 0; i < text.length; i++) {
+      // Check if component is still mounted logic could be added here, but simple delay is fine
+      if (!chatContainerRef.current) break; // Simple safety check
       await new Promise((resolve) => setTimeout(resolve, 15));
-      setStreamingContent((prev) => prev + response[i]);
+      setStreamingContent((prev) => prev + text[i]);
     }
 
     // After streaming completes, add the full message
     const assistantMessage: Message = {
       id: (Date.now() + 1).toString(),
       role: 'assistant',
-      content: response,
+      content: text,
     };
 
     setMessages((prev) => [...prev, assistantMessage]);
     setStreamingContent('');
-    setIsLoading(false);
   };
 
   return (
