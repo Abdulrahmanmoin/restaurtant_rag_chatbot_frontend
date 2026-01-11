@@ -16,7 +16,7 @@ export interface ChatResponse {
     history: Message[];
 }
 
-export const sendMessage = async (message: string, history: Message[] = []): Promise<string> => {
+export const sendMessage = async (message: string, history: Message[] = []): Promise<{ response: string; history: Message[] }> => {
     try {
         const response = await fetch(`${API_URL}/chat`, {
             method: "POST",
@@ -25,7 +25,7 @@ export const sendMessage = async (message: string, history: Message[] = []): Pro
             },
             body: JSON.stringify({
                 message,
-                history: history.map(h => ({ role: h.role, content: h.content })), // Ensure only correct fields are sent
+                history: history.map(h => ({ role: h.role, content: h.content })),
             }),
         });
 
@@ -34,7 +34,7 @@ export const sendMessage = async (message: string, history: Message[] = []): Pro
         }
 
         const data: ChatResponse = await response.json();
-        return data.response;
+        return data;
     } catch (error) {
         console.error("Failed to send message:", error);
         throw error;

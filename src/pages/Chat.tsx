@@ -18,6 +18,8 @@ const Chat: FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState('');
+  // specialized state for backend history (which will contain the summary)
+  const [backendHistory, setBackendHistory] = useState<{ role: 'user' | 'assistant' | 'system'; content: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -42,10 +44,8 @@ const Chat: FC = () => {
 
     // Prepare history from current messages
     // We map the existing 'messages' to the format expected by the API
-    const history = messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
+    // Use the backendHistory state which contains the summary
+    const history = backendHistory;
 
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
@@ -53,7 +53,11 @@ const Chat: FC = () => {
 
     try {
       // Call the API
-      const responseText = await sendMessage(content, history);
+      // We expect response + new history (summary)
+      const { response: responseText, history: newHistory } = await sendMessage(content, history as any);
+
+      // Update our backend history with the new summary
+      setBackendHistory(newHistory);
 
       await animateResponse(responseText);
     } catch (error) {
